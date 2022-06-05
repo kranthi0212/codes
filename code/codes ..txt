@@ -1,0 +1,653 @@
+Write a C/C++ -- program to Implement Lexical Analyzer.
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+
+    int
+    isKeyword(char buffer[])
+{
+    char keywords[32][10] = {"auto", "break", "case", "char", "const", "continue", "default",
+                             "do", "double", "else", "enum", "extern", "float", "for", "goto",
+                             "if", "int", "long", "register", "return", "short", "signed",
+                             "sizeof", "static", "struct", "switch", "typedef", "union",
+                             "unsigned", "void", "volatile", "while"};
+    int i, flag = 0;
+    for (i = 0; i < 32; ++i)
+    {
+        if (strcmp(keywords[i], buffer) == 0)
+        {
+            flag = 1;
+            break;
+        }
+    }
+    return flag;
+}
+
+int main()
+{
+    char ch, buffer[15], operators[] = "+-*/%=";
+    FILE *fp;
+    int i, j = 0;
+    fp = fopen("program.txt", "r");
+    if (fp == NULL)
+    {
+        printf("error while opening the file\n");
+        exit(0);
+    }
+    while ((ch = fgetc(fp)) != EOF)
+    {
+        for (i = 0; i < 6; ++i)
+        {
+            if (ch == operators[i])
+                printf("%c is operator\n", ch);
+        }
+
+        if (isalnum(ch))
+        {
+            buffer[j++] = ch;
+        }
+        else if ((ch == ' ' || ch == '\n') && (j != 0))
+        {
+            buffer[j] = '\0';
+            j = 0;
+
+            if (isKeyword(buffer) == 1)
+                printf("%s is keyword\n", buffer);
+            else
+                printf("%s is indentifier\n", buffer);
+        }
+    }
+    fclose(fp);
+    return 0;
+}
+
+
+
+------------------------------------------------------------------------------------------------------
+
+
+%{
+int COMMENT=0;
+%}
+identifier [a-zA-Z][a-zA-Z0-9]*
+%%
+#.* {printf("\n%s is a preprocessor directive",yytext);}
+int |
+float |
+char |
+double |
+while |
+for |
+struct |
+typedef |
+do |
+if |
+break |
+continue |
+void |
+switch |
+return |
+else |
+goto {printf("\n\t%s is a keyword",yytext);}
+"/*" {COMMENT=1;}{printf("\n\t %s is a COMMENT",yytext);}
+{identifier}\( {if(!COMMENT)printf("\nFUNCTION \n\t%s",yytext);}
+\{  {if(!COMMENT)printf("\n BLOCK BEGINS");}
+\}  {if(!COMMENT)printf("BLOCK ENDS ");}
+{identifier}(\[[0-9]*\])? {if(!COMMENT) printf("\n %s IDENTIFIER",yytext);}
+\".*\" {if(!COMMENT)printf("\n\t %s is a STRING",yytext);}
+[0-9]+ {if(!COMMENT) printf("\n %s is a NUMBER ",yytext);}
+\)(\:)? {if(!COMMENT)printf("\n\t");ECHO;printf("\n");}
+\( ECHO;
+= {if(!COMMENT)printf("\n\t %s is an ASSIGNMENT OPERATOR",yytext);}
+\<= |
+\>= |
+\< |
+== |
+\> {if(!COMMENT) printf("\n\t%s is a RELATIONAL OPERATOR",yytext);}
+%%
+int main(int argc, char **argv)
+{
+FILE *file;
+file=fopen("var.c","r");
+if(!file)
+{
+printf("could not open the file");
+exit(0);
+}
+yyin=file;
+yylex();
+printf("\n");
+return(0);
+}
+int yywrap()
+{
+return(1);
+}
+
+INPUT:
+//var.c
+#include<stdio.h>
+#include<conio.h>
+void main()
+{
+int a,b,c;
+a=1;
+b=2;
+c=a+b;
+printf("Sum:%d",c);
+}
+
+output"
+
+lex l.l
+cc lex.yy.c
+./a.out
+
+-----------------------------------------------------------------------------------------------------
+
+FIRST 
+
+
+/* Author : karthik Alapati
+ * mail:   saikarthik002@gmail.com
+ *Modified on : 14/03/2016
+ */
+#include <stdio.h>
+#include <ctype.h>
+void FIRST(char[], char);
+void addToResultSet(char[], char);
+int numOfProductions;
+char productionSet[10][10];
+
+int main()
+{
+    int i;
+    char choice;
+    char c;
+    char result[20];
+    printf("How many number of productions ? :");
+    scanf(" %d", &numOfProductions);
+    for (i = 0; i < numOfProductions; i++) // read production string eg: E=E+T
+    {
+        // printf("Enter productions Number %d : ",i+1);
+        scanf(" %s", productionSet[i]);
+    }
+    do
+    {
+        printf("\n Find the FIRST of  :");
+        scanf(" %c", &c);
+        FIRST(result, c); // Compute FIRST; Get Answer in 'result' array
+        printf("\n FIRST(%c)= { ", c);
+        for (i = 0; result[i] != '\0'; i++)
+            printf(" %c ", result[i]); // Display result
+        printf("}\n");
+        printf("press 'y' to continue : ");
+        scanf(" %c", &choice);
+    } while (choice == 'y' || choice == 'Y');
+}
+/*
+ *Function FIRST:
+ *Compute the elements in FIRST(c) and write them
+ *in Result Array.
+ */
+void FIRST(char *Result, char c)
+{
+    int i, j, k;
+    char subResult[20];
+    int foundEpsilon;
+    
+    subResult[0] = '\0';
+    Result[0] = '\0';
+    // If X is terminal, FIRST(X) = {X}.
+    if (!(isupper(c)))
+    {
+        addToResultSet(Result, c);
+        return;
+    }
+    // If X is non terminal
+    // Read each production
+    for (i = 0; i < numOfProductions; i++)
+    {
+        // Find production with X as LHS
+        if (productionSet[i][0] == c)
+        {
+            // If X → ε is a production, then add ε to FIRST(X).
+            if (productionSet[i][2] == '$')
+                addToResultSet(Result, '$');
+            // If X is a non-terminal, and X → Y1 Y2 … Yk
+            // is a production, then add a to FIRST(X)
+            // if for some i, a is in FIRST(Yi),
+            // and ε is in all of FIRST(Y1), …, FIRST(Yi-1).
+            else
+            {
+                j = 2;
+                while (productionSet[i][j] != '\0')
+                {
+                    foundEpsilon = 0;
+                    FIRST(subResult, productionSet[i][j]);
+                    for (k = 0; subResult[k] != '\0'; k++)
+                        addToResultSet(Result, subResult[k]);
+                    for (k = 0; subResult[k] != '\0'; k++)
+                        if (subResult[k] == '$')
+                        {
+                            foundEpsilon = 1;
+                            break;
+                        }
+                    // No ε found, no need to check next element
+                    if (!foundEpsilon)
+                        break;
+                    j++;
+                }
+            }
+        }
+    }
+    return;
+}
+/* addToResultSet adds the computed
+ *element to result set.
+ *This code avoids multiple inclusion of elements
+ */
+void addToResultSet(char Result[], char val)
+{
+    int k;
+    for (k = 0; Result[k] != '\0'; k++)
+        if (Result[k] == val)
+            return;
+    Result[k] = val;
+    Result[k + 1] = '\0';
+}
+
+
+8
+E=TD
+D=+TD
+D=$
+T=FS
+S=*FS
+S=$
+F=(E)
+F=a
+E
+Y
+D
+z
+
+How many number of productions ? :
+ Find the FIRST of  :
+ FIRST(E)= {  (  a }
+press 'y' to continue : 
+ Find the FIRST of  :
+ FIRST(D)= {  +  $ }
+press 'y' to continue :
+
+
+--------------------------------------------------------------------------------
+
+infix
+
+
+#include<stdio.h>
+#include<ctype.h>
+
+char stack[100];
+int top = -1;
+
+void push(char x)
+{
+    top++;
+    stack[top] = x;
+}
+
+char pop()
+{
+    if(top == -1)
+        return -1;
+    else
+        return stack[top--];
+}
+
+int priority(char x)
+{
+    if(x == '(')
+        return 0;
+    if(x == '+' || x == '-')
+        return 1;
+    if(x == '*' || x == '/')
+        return 2;
+    return 0;
+}
+
+int main()
+{
+    char exp[100];
+    char *e, x;
+    printf("Enter the expression : ");
+    scanf("%s",exp);
+    printf("\n");
+    e = exp;
+    
+    while(*e != '\0')
+    {
+        if('A'<=*e && *e<='Z')
+            printf("%c ",*e);
+        else if(*e == '(')
+            push(*e);
+        else if(*e == ')')
+        {
+            while(x  != '(')pop();
+                printf("%c ", x);
+        }
+        else
+        {
+            while(priority(stack[top]) >= priority(*e))
+                printf("%c ",pop());
+            push(*e);
+        }
+        e++;
+    }
+    
+    while(top != -1)
+    {
+        printf("%c ",pop());
+    }return 0;
+}
+
+
+-----------------------------------------------------------------------------------------------------
+
+
+three addd
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+int main()
+{
+    char s[100];
+    char j = 'A';
+
+    printf("Enter the expression\n");
+    scanf("%s", s);
+    printf("3address code\n");
+
+    int i = 2, n, h;
+    n = strlen(s);
+
+    for (i = 2; i <= n; i++)
+    {
+        if (s[i] == '*' || s[i] == '/')
+        {
+            printf("%c=%c%c%c\n", j, s[i - 1], s[i], s[i + 1]);
+            s[i - 1] = j++;
+            for (h = i; h < n - 1; h++)
+                s[h] = s[h + 2];
+            n -= 2;
+            i = i - 1;
+        }
+    }
+    for (i = 2; i <= n; i++)
+    {
+        if (s[i] == '+' || s[i] == '-')
+        {
+            printf("%c=%c%c%c\n", j, s[i - 1], s[i], s[i + 1]);
+            s[i - 1] = j++;
+            for (h = i; h < n - 1; h++)
+                s[h] = s[h + 2];
+            n -= 2;
+            i = i - 1;
+        }
+    }
+    printf("%c=%c", s[0], s[2]);
+    return 0;
+}
+
+
+
+
+Z=a+b-c+d*e/f/g/h-k*l+m
+
+Enter the expression
+3address code
+A=d*e
+B=A/f
+C=B/g
+D=C/h
+E=k*l
+F=a+b
+G=F-c
+H=G+D
+I=H-E
+J=I+m
+Z=J
+
+
+----------------------------------------------------------------------------------------------------------------------------------
+
+top down
+
+
+
+#include<stdio.h>
+
+char input[100];
+int i,error; // by default i and error initializes to 0
+
+void F();
+void T();
+void E();
+void Eds();
+void Tds();
+
+
+
+
+void F()
+{
+    if(input[i]=='(')
+    {
+        i++;
+        E();
+        i++;
+    }
+    else if(input[i]=='i')
+    {
+        i++;
+    }
+    else{
+        error=1;
+    }
+}
+
+void T()
+{
+    F();
+    Tds();
+}
+void E()
+{
+    T();
+    Eds();
+}
+
+void Eds()
+{
+    if(input[i]=='+')
+    {
+        i++;
+        T();
+        Eds();
+    }
+}
+void Tds()
+{
+    if(input[i]=='*')
+    {
+        i++;
+        F();
+        Tds();
+    }
+}
+
+
+
+int main()
+{
+    printf("Recursive descent parsing for grammar\n");
+    printf("\nE->TE'\nE'->+TE'/@\nT->FT'\nT'->*FT'/@\nF->(E)/ID\n\n");
+    gets(input);
+    
+    E();
+    
+    if(input[i]=='\0' && error==0)
+    {
+         printf("string is Accepted");
+    }
+    else{
+        printf("String rejected");
+    }
+    return 0;
+ 
+}
+
+
+
+i*i+i
+
+Recursive descent parsing for grammar
+
+E->TE'
+E'->+TE'/@
+T->FT'
+T'->*FT'/@
+F->(E)/ID
+
+string is Accepted
+
+
+
+-------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+pp
+
+
+#include <stdio.h>
+#include <string.h>
+char prol[7][10] = {"S", "A", "A", "B", "B", "C", "C"};
+char pror[7][10] = {"A", "Bb", "Cd", "aB", "@", "Cc", "@"};
+char prod[7][10] = {"S->A", "A->Bb", "A->Cd", "B->aB", "B->@", "C->Cc", "C->@"};
+char first[7][10] = {"abcd", "ab", "cd", "a@", "@", "c@", "@"};
+char follow[7][10] = {"$", "$", "$", "a$", "b$", "c$", "d$"};
+char table[5][6][10];
+int numr(char c)
+{
+    switch (c)
+    {
+    case 'S':
+        return 0;
+    case 'A':
+        return 1;
+    case 'B':
+        return 2;
+    case 'C':
+        return 3;
+    case 'a':
+        return 0;
+    case 'b':
+        return 1;
+    case 'c':
+        return 2;
+    case 'd':
+        return 3;
+    case '$':
+        return 4;
+    }
+    return (2);
+}
+int main()
+{
+    int i, j, k;
+    for (i = 0; i < 5; i++)
+        for (j = 0; j < 6; j++)
+            strcpy(table[i][j], " ");
+    printf("The following grammar is used for Parsing Table:\n");
+    for (i = 0; i < 7; i++)
+        printf("%s\n", prod[i]);
+    printf("\nPredictive parsing table:\n");
+    fflush(stdin);
+    for (i = 0; i < 7; i++)
+    {
+        k = strlen(first[i]);
+        for (j = 0; j < 10; j++)
+            if (first[i][j] != '@')
+                strcpy(table[numr(prol[i][0]) + 1][numr(first[i][j]) + 1], prod[i]);
+    }
+    for (i = 0; i < 7; i++)
+    {
+        if (strlen(pror[i]) == 1)
+        {
+            if (pror[i][0] == '@')
+            {
+                k = strlen(follow[i]);
+                for (j = 0; j < k; j++)
+                    strcpy(table[numr(prol[i][0]) + 1][numr(follow[i][j]) + 1], prod[i]);
+            }
+        }
+    }
+    strcpy(table[0][0], " ");
+    strcpy(table[0][1], "a");
+    strcpy(table[0][2], "b");
+    strcpy(table[0][3], "c");
+    strcpy(table[0][4], "d");
+    strcpy(table[0][5], "$");
+    strcpy(table[1][0], "S");
+    strcpy(table[2][0], "A");
+    strcpy(table[3][0], "B");
+    strcpy(table[4][0], "C");
+    printf("\n--------------------------------------------------------\n");
+    for (i = 0; i < 5; i++)
+        for (j = 0; j < 6; j++)
+        {
+            printf("%-10s", table[i][j]);
+            if (j == 5)
+                printf("\n--------------------------------------------------------\n");
+        }
+}
+
+
+The following grammar is used for Parsing Table:
+S->A
+A->Bb
+A->Cd
+B->aB
+B->@
+C->Cc
+C->@
+
+Predictive parsing table:
+
+--------------------------------------------------------
+          a         b         c         d         $         
+--------------------------------------------------------
+S         S->A      S->A      S->A      S->A                
+--------------------------------------------------------
+A         A->Bb     A->Bb     A->Cd     A->Cd               
+--------------------------------------------------------
+B         B->aB     B->@      B->@                B->@      
+--------------------------------------------------------
+C                             C->@      C->@      C->@      
+--------------------------------------------------------
+
+
+
+
+
+
+
+
+
+------------------------------------------------------------------------------------------------
